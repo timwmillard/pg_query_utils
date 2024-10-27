@@ -1,0 +1,4 @@
+[submodule "src/vendor/libpg_query"]
+	path = src/vendor/libpg_query
+	url = https://github.com/pganalyze/libpg_query.git
+	branch = 16-latest
