@@ -1,21 +1,18 @@
-#include <pg_query.h>
-#include "protobuf/pg_query.pb-c.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <pg_query.h>
+
 #define INIT_BUFFER_SIZE 256
 
-int main() {
-    PgQueryParseResult result;
-
-    char *query;
+char *load_buffer(FILE *fd) {
+    char *buf;
     size_t buf_size = INIT_BUFFER_SIZE;
     
-    query = malloc(buf_size);
-    if (query == NULL) {
-        perror("unable to allocate query buffer");
-        return 1;
+    buf = malloc(buf_size);
+    if (buf == NULL) {
+        perror("unable to allocate buf buffer");
+        return NULL;
     }
 
     size_t index = 0;
@@ -23,15 +20,22 @@ int main() {
     while ((c = fgetc(stdin)) != EOF) {
         if (index + 1 > buf_size) {
             buf_size *= 2;
-            query = realloc(query, buf_size);
-            if (query == NULL) {
-                perror("unable to increase query buffer");
-                return 1;
+            buf = realloc(buf, buf_size);
+            if (buf == NULL) {
+                perror("unable to increase buf buffer");
+                exit(1);
             }
         }
-        query[index++] = c;
+        buf[index++] = c;
     }
-    query[index] = '\0';
+    buf[index] = '\0';
+    return buf;
+}
+
+int main() {
+    PgQueryParseResult result;
+
+    char *query = load_buffer(stdin);
 
     result = pg_query_parse(query);
 
