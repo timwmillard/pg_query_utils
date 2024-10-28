@@ -114,8 +114,8 @@ static void parse_options(int argc, char *argv[], struct opts *options)
         switch (ch) {
             case 'c': break;
             case 'd': 
-                      printf("database=%s\n", optarg);
-                      break;
+                printf("database=%s\n", optarg);
+                break;
             case 'V':
                 version();
                 exit(0);
