@@ -21,6 +21,8 @@
 
 #include "libpq-fe.h"
 
+#include "buf.h"
+
 #define VERSION "0.0.1"
 
 typedef struct {
@@ -95,16 +97,16 @@ static void parse_options(int argc, char *argv[], struct opts *options)
 
     /* options descriptor */
     static struct option longopts[] = {
+		{ "help",        no_argument,       NULL, '?' },
         { "command",     required_argument, NULL, 'c' },
         { "dbname",      required_argument, NULL, 'd' },
         { "file",        required_argument, NULL, 'f' },
-        { "version",     no_argument,       NULL, 'V' },
         { "host",        required_argument, NULL, 'h' },
-        { "port",        required_argument, NULL, 'p' },
-        { "username",    required_argument, NULL, 'U' },
         { "no-password", no_argument,       NULL, 'w' },
         { "password",    no_argument,       NULL, 'W' },
-		{ "help",        no_argument,       NULL, '?' },
+        { "port",        required_argument, NULL, 'p' },
+        { "username",    required_argument, NULL, 'U' },
+        { "version",     no_argument,       NULL, 'V' },
         { NULL,          0,                 NULL,  0  }
     };
 
