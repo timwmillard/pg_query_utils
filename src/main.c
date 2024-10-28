@@ -7,7 +7,12 @@
 #define INIT_BUFFER_SIZE 256
 
 int main() {
-    PgQueryParseResult result;
+    PgQueryScanResult result;
+    PgQuery__ScanResult *scan_result;
+    PgQuery__ScanToken *scan_token;
+
+    const ProtobufCEnumValue *token_kind;
+    const ProtobufCEnumValue *keyword_kind;
 
     char *query;
     size_t buf_size = INIT_BUFFER_SIZE;
@@ -33,11 +38,20 @@ int main() {
     }
     query[index] = '\0';
 
-    result = pg_query_parse(query);
+    result = pg_query_scan(query);
 
-    printf("%s\n", result.parse_tree);
+    scan_result = pg_query__scan_result__unpack(NULL, result.pbuf.len, (void*) result.pbuf.data);
+    printf("  version: %d, tokens: %ld, size: %ld\n", scan_result->version, scan_result->n_tokens, result.pbuf.len);
+    for (size_t i = 0; i < scan_result->n_tokens; i++) {
+        scan_token = scan_result->tokens[i];
+        token_kind = protobuf_c_enum_descriptor_get_value(&pg_query__token__descriptor, scan_token->token);
+        /*token_kind = protobuf_c_enum_descriptor_get_value(&pg_query__token__descriptor, scan_token->token);*/
+        /*keyword_kind = protobuf_c_enum_descriptor_get_value(&pg_query__keyword_kind__descriptor, scan_token->keyword_kind);*/
+        /*printf("  \"%.*s\" = [ %d, %d, %s, %s ]\n", scan_token->end - scan_token->start, &(input[scan_token->start]), scan_token->start, scan_token->end, token_kind->name, keyword_kind->name);*/
+    }
 
-    pg_query_free_parse_result(result);
+
+    pg_query_free_scan_result(result);
 
     return 0;
 }

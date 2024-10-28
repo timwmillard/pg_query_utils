@@ -1,4 +1,5 @@
 
 -Isrc/vendor/libpg_query/
 -Isrc/vendor/libpg_query/vendor/
+-Isrc/vendor/libpg_query/src/postgres/include/
 

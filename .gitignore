@@ -1,4 +1,8 @@
 
 /pg_query_args
 /pg_query_json
+/pg_query_fingerprint
+/pg_prepare_query
+
+/direct
 
