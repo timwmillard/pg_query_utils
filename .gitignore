@@ -3,6 +3,7 @@
 /pg_query_json
 /pg_query_fingerprint
 /pg_prepare_query
+/pg_describe_query
 
 /direct
 

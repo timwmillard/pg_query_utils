@@ -3,3 +3,6 @@
 -Isrc/vendor/libpg_query/vendor/
 -Isrc/vendor/libpg_query/src/postgres/include/
 
+-I/opt/homebrew/opt/libpq/include
+-I/opt/homebrew/Cellar/openssl@3/3.1.1_1/include
+

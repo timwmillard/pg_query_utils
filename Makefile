@@ -24,3 +24,12 @@ src/vendor/libpg_query/libpg_query.a:
 	cd src/vendor/libpg_query && \
 	make
 
+
+# libpq dependencies
+PKG_CONFIG_PATH="/opt/homebrew/opt/libpq/lib/pkgconfig"
+
+CFLAGS+=$(shell pkg-config --cflags libpq)
+LDFLAGS+=$(shell pkg-config --libs libpq)
+
+pg_describe_query: src/pg_describe_query.c src/vendor/libpg_query/libpg_query.a
+	clang $(CFLAGS) $(LDFLAGS) src/pg_describe_query.c -o pg_describe_query
