@@ -152,66 +152,66 @@ int main(int argc, char *argv[])
 
     parse_options(argc, argv, &options);
 
-  /*
-   * If the user supplies a parameter on the command line, use it as the
-   * conninfo string; otherwise default to setting dbname=postgres and using
-   * environment variables or defaults for all other connection parameters.
-   */
+    /*
+     * If the user supplies a parameter on the command line, use it as the
+     * conninfo string; otherwise default to setting dbname=postgres and using
+     * environment variables or defaults for all other connection parameters.
+     */
 
-  char *conninfo = getenv("DATABASE_URL");
-  if (conninfo == NULL) {
-      conninfo = "";
-    /* fprintf(stderr, "Missing DATABASE_URL env variable\n"); */
-    /* exit(1); */
-  }
+    char *conninfo = getenv("DATABASE_URL");
+    if (conninfo == NULL) {
+        conninfo = "";
+        /* fprintf(stderr, "Missing DATABASE_URL env variable\n"); */
+        /* exit(1); */
+    }
 
-  /* Make a connection to the database */
-  PGconn *conn;
-  conn = PQconnectdb(conninfo);
+    /* Make a connection to the database */
+    PGconn *conn;
+    conn = PQconnectdb(conninfo);
 
-  /* Check to see that the backend connection was successfully made */
-  if (PQstatus(conn) != CONNECTION_OK) {
-    fprintf(stderr, "%s", PQerrorMessage(conn));
-    exit_nicely(conn);
-  }
+    /* Check to see that the backend connection was successfully made */
+    if (PQstatus(conn) != CONNECTION_OK) {
+        fprintf(stderr, "%s", PQerrorMessage(conn));
+        exit_nicely(conn);
+    }
 
-  PGresult *exec_res =
-      // PQexec(conn, "prepare \"get_users\" as select * from users where id = $1 and name = $2::varchar");
-      PQexec(conn, "prepare \"get_users\" as insert into users (id, name) values ($1, $2) returning *;");
-  if (PQresultStatus(exec_res) != PGRES_COMMAND_OK) {
-    fprintf(stderr, "query failed: %s", PQerrorMessage(conn));
-    PQclear(exec_res);
-    exit_nicely(conn);
-  }
+    PGresult *exec_res =
+        // PQexec(conn, "prepare \"get_users\" as select * from users where id = $1 and name = $2::varchar");
+        PQexec(conn, "prepare \"get_users\" as insert into users (id, name) values ($1, $2) returning *;");
+    if (PQresultStatus(exec_res) != PGRES_COMMAND_OK) {
+        fprintf(stderr, "query failed: %s", PQerrorMessage(conn));
+        PQclear(exec_res);
+        exit_nicely(conn);
+    }
 
-  PGresult *desc_prep_res = PQdescribePrepared(conn, "get_users");
-  if (PQresultStatus(desc_prep_res) != PGRES_COMMAND_OK) {
-    fprintf(stderr, "query failed: %s", PQerrorMessage(conn));
+    PGresult *desc_prep_res = PQdescribePrepared(conn, "get_users");
+    if (PQresultStatus(desc_prep_res) != PGRES_COMMAND_OK) {
+        fprintf(stderr, "query failed: %s", PQerrorMessage(conn));
+        PQclear(desc_prep_res);
+        exit_nicely(conn);
+    }
+    print_result(desc_prep_res);
+
+
+    ParamVar *data = malloc(sizeof(ParamVar) * PQnparams(desc_prep_res));
+
+    for (int i = 0; i < PQnparams(desc_prep_res); i++) {
+        Oid param_type = PQparamtype(desc_prep_res, i);
+        printf("Param type=%d\n", param_type);
+        data[i] = (ParamVar){
+            .number = i + 1,
+                .type_oid = param_type,
+        };
+        // select <oid>::regtype;
+    }
+
+    for (int i = 0; i < PQnfields(desc_prep_res); i++) {
+        char *field_name = PQfname(desc_prep_res, i);
+        Oid field_type = PQftype(desc_prep_res, i);
+        printf("Field name=%s, type=%d\n", field_name, field_type);
+    }
+
     PQclear(desc_prep_res);
-    exit_nicely(conn);
-  }
-  print_result(desc_prep_res);
 
-
-  ParamVar *data = malloc(sizeof(ParamVar) * PQnparams(desc_prep_res));
-
-  for (int i = 0; i < PQnparams(desc_prep_res); i++) {
-    Oid param_type = PQparamtype(desc_prep_res, i);
-    printf("Param type=%d\n", param_type);
-    data[i] = (ParamVar){
-        .number = i + 1,
-        .type_oid = param_type,
-    };
-    // select <oid>::regtype;
-  }
-
-  for (int i = 0; i < PQnfields(desc_prep_res); i++) {
-    char *field_name = PQfname(desc_prep_res, i);
-    Oid field_type = PQftype(desc_prep_res, i);
-    printf("Field name=%s, type=%d\n", field_name, field_type);
-  }
-
-  PQclear(desc_prep_res);
-
-  return 0;
+    return 0;
 }
