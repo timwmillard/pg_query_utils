@@ -3,25 +3,17 @@
 #include <stdlib.h>
 
 char** get_type_names_from_oids_bulk(PGconn *conn, Oid *oids, int oid_count) {
-    // Create a parameterized query string
-    char query[1024] = "SELECT typname FROM pg_type WHERE oid = ANY($1)";
-    
-    // Convert Oids array to string representation for PQexecParams
-    char *oids_str = malloc(oid_count * 12);  // Each Oid can be up to 10 digits plus commas
-    if (!oids_str) return NULL;
-    oids_str[0] = '\0';
+    // Query using the ANY operator to match an array of Oids
+    const char *query = "SELECT typname FROM pg_type WHERE oid = ANY($1)";
 
-    for (int i = 0; i < oid_count; i++) {
-        char temp[12];
-        snprintf(temp, sizeof(temp), "%u,", oids[i]);
-        strcat(oids_str, temp);
-    }
-    oids_str[strlen(oids_str) - 1] = '\0';  // Remove last comma
+    // Calculate the total size needed for the binary array
+    int paramLength = oid_count * sizeof(Oid);
+    char *paramValues[1] = { (char *)oids };  // Pass the array directly
+    const int paramFormats[1] = { 1 };         // Binary format
+    const int paramLengths[1] = { paramLength };
+    Oid paramTypes[1] = { INT4ARRAYOID };      // Array of 32-bit integers
 
-    const char *paramValues[1] = { oids_str };
-
-    PGresult *res = PQexecParams(conn, query, 1, NULL, paramValues, NULL, NULL, 0);
-    free(oids_str);
+    PGresult *res = PQexecParams(conn, query, 1, paramTypes, (const char **)paramValues, paramLengths, paramFormats, 0);
 
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         fprintf(stderr, "Query failed: %s", PQerrorMessage(conn));
@@ -43,4 +35,3 @@ char** get_type_names_from_oids_bulk(PGconn *conn, Oid *oids, int oid_count) {
     PQclear(res);
     return type_names;
 }
-

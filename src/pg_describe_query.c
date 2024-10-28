@@ -78,6 +78,8 @@ void usage()
 	printf("  -U, --username=USERNAME  database user name\n");
 	printf("  -w, --no-password        never prompt for password\n");
 	printf("  -W, --password           force password prompt (should happen automatically)\n");
+
+	printf("\nOutput options:\n");
 }
 
 struct opts 
@@ -148,6 +150,7 @@ static struct opts options;
 
 int main(int argc, char *argv[]) 
 {
+    // Set defaults
     options.input = stdin;
 
     parse_options(argc, argv, &options);
@@ -167,6 +170,7 @@ int main(int argc, char *argv[])
 
     /* Make a connection to the database */
     PGconn *conn;
+    // conninfo_add_defaults
     conn = PQconnectdb(conninfo);
 
     /* Check to see that the backend connection was successfully made */
@@ -175,18 +179,25 @@ int main(int argc, char *argv[])
         exit_nicely(conn);
     }
 
+    const char *prepare_prefix = "prepare \"my_statement\" as ";
+    char *query = file_read_string(options.input);
+
+    char *prepare = malloc(strlen(prepare_prefix) + strlen(query) + 1);
+    strcpy(prepare, prepare_prefix);
+    strcat(prepare, query);
+
     PGresult *exec_res =
         // PQexec(conn, "prepare \"get_users\" as select * from users where id = $1 and name = $2::varchar");
-        PQexec(conn, "prepare \"get_users\" as insert into users (id, name) values ($1, $2) returning *;");
+        PQexec(conn, prepare);
     if (PQresultStatus(exec_res) != PGRES_COMMAND_OK) {
-        fprintf(stderr, "query failed: %s", PQerrorMessage(conn));
+        fprintf(stderr, "%s", PQerrorMessage(conn));
         PQclear(exec_res);
         exit_nicely(conn);
     }
 
-    PGresult *desc_prep_res = PQdescribePrepared(conn, "get_users");
+    PGresult *desc_prep_res = PQdescribePrepared(conn, "my_statement");
     if (PQresultStatus(desc_prep_res) != PGRES_COMMAND_OK) {
-        fprintf(stderr, "query failed: %s", PQerrorMessage(conn));
+        fprintf(stderr, "%s", PQerrorMessage(conn));
         PQclear(desc_prep_res);
         exit_nicely(conn);
     }
@@ -200,7 +211,7 @@ int main(int argc, char *argv[])
         printf("Param type=%d\n", param_type);
         data[i] = (ParamVar){
             .number = i + 1,
-                .type_oid = param_type,
+            .type_oid = param_type,
         };
         // select <oid>::regtype;
     }
