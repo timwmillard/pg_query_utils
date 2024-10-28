@@ -52,18 +52,7 @@ static void exit_nicely(PGconn *conn) {
   exit(1);
 }
 
-struct opts 
-{
-	char	   *dbname;
-	char	   *host;
-	char	   *port;
-	char	   *username;
-
-    FILE *input;
-};
-
-static void
-version(void)
+static void version(void)
 {
 	puts("pg_describe_query " VERSION);
 }
@@ -88,6 +77,16 @@ void usage()
 	printf("  -w, --no-password        never prompt for password\n");
 	printf("  -W, --password           force password prompt (should happen automatically)\n");
 }
+
+struct opts 
+{
+	char	   *dbname;
+	char	   *host;
+	char	   *port;
+	char	   *username;
+
+    FILE *input;
+};
 
 static void parse_options(int argc, char *argv[], struct opts *options) 
 {
