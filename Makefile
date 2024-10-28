@@ -33,3 +33,4 @@ LDFLAGS+=$(shell pkg-config --libs libpq)
 
 pg_describe_query: src/pg_describe_query.c src/vendor/libpg_query/libpg_query.a
 	clang $(CFLAGS) $(LDFLAGS) src/pg_describe_query.c -o pg_describe_query
+
