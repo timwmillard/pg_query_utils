@@ -40,8 +40,7 @@ void usage()
 	printf("  -d, --details            output query details\n");
 }
 
-struct options 
-{
+struct options {
     char *command;
     char *file;
     bool details;
