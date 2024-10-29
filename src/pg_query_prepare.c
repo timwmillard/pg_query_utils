@@ -21,7 +21,9 @@
 
 static void version(void)
 {
-	puts("pg_query_prepare " VERSION);
+	printf("pg_query_prepare " VERSION "\n\n");
+
+	printf("PostgreSQL " PG_VERSION "\n");
 }
 
 void usage()
