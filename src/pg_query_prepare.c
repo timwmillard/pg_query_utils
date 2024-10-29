@@ -10,6 +10,7 @@
 #include <getopt.h>
 
 #include "postgres.h"
+
 #include "nodes/nodeFuncs.h"
 #include "nodes/pg_list.h"
 
