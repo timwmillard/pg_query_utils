@@ -1,19 +1,17 @@
 /*
- * pg_query_prepare
+ * pg_query_prepare.c
+ *    Utility program to analyse a query and return number of params.
  * 
- *
- *
  */
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
 #include <getopt.h>
 
 #include "postgres.h"
-
 #include "nodes/nodeFuncs.h"
 #include "nodes/pg_list.h"
-
 
 #include "pg_query.h"
 #include "buf.h"
