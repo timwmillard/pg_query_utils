@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
                         fingerprint_result.error->cursorpos);
                 return 1;
             }
-            printf("fingerprint: %s\n", fingerprint_result.fingerprint_str);
+            printf("fingerprint=%s\n", fingerprint_result.fingerprint_str);
         }
     }
 
