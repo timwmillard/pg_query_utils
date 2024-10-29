@@ -32,15 +32,15 @@ void usage()
 
 	printf("\nOptions:\n");
 	printf("  -?, --help               show this help, then exit\n");
-	printf("  -V, --version            output version information, then exit\n");
+	printf("  -V, --version            output version information\n");
 	printf("  -c, --command=COMMAND    run only single command (SQL)\n");
 	printf("  -f, --file=FILENAME      read from file instead of stdin\n");
-	printf("  -p, --fingerprint        calculate each queries fingerprint\n");
+	printf("  -d, --details            output query details\n");
 }
 
 struct options 
 {
-    bool fingerprint;
+    bool details;
     FILE *input;
     char *query;
 };
@@ -55,7 +55,7 @@ static void parse_options(int argc, char *argv[], struct options *opts)
 		{ "help",        no_argument,       NULL, '?' },
         { "command",     required_argument, NULL, 'c' },
         { "file",        required_argument, NULL, 'f' },
-        { "fingerprint", no_argument,       NULL, 'p' },
+        { "details", no_argument,       NULL, 'd' },
         { "version",     no_argument,       NULL, 'V' },
         { NULL,          0,                 NULL,  0  }
     };
@@ -65,8 +65,8 @@ static void parse_options(int argc, char *argv[], struct options *opts)
             case 'c': 
                 opts->query = optarg;
                 break;
-            case 'p':
-                opts->fingerprint = true;
+            case 'd':
+                opts->details = true;
                 break;
             case 'V':
                 version();
@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
     foreach(cell, tree) {
         RawStmt *raw = lfirst(cell);
 
-        if (opts.fingerprint) {
+        if (opts.details) {
             PgQueryFingerprintResult fingerprint_result = pg_query_fingerprint_from_tree(raw);
             if (fingerprint_result.error) {
                 fprintf(stderr, "error: %s at pos:%d\n", 
