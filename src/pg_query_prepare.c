@@ -42,9 +42,9 @@ void usage()
 
 struct options 
 {
+    char *command;
+    char *file;
     bool details;
-    FILE *input;
-    char *query;
 };
 
 static void parse_options(int argc, char *argv[], struct options *opts) 
@@ -57,15 +57,15 @@ static void parse_options(int argc, char *argv[], struct options *opts)
 		{ "help",        no_argument,       NULL, '?' },
         { "command",     required_argument, NULL, 'c' },
         { "file",        required_argument, NULL, 'f' },
-        { "details", no_argument,       NULL, 'd' },
+        { "details",     no_argument,       NULL, 'd' },
         { "version",     no_argument,       NULL, 'V' },
         { NULL,          0,                 NULL,  0  }
     };
 
-    while ((ch = getopt_long(argc, argv, "c:f:pV?", longopts, NULL)) != -1) {
+    while ((ch = getopt_long(argc, argv, "c:f:dV?", longopts, NULL)) != -1) {
         switch (ch) {
             case 'c': 
-                opts->query = optarg;
+                opts->command = optarg;
                 break;
             case 'd':
                 opts->details = true;
@@ -74,12 +74,7 @@ static void parse_options(int argc, char *argv[], struct options *opts)
                 version();
                 exit(0);
             case 'f':
-                fd = fopen(optarg, "r");
-                if (fd == NULL) {
-                    fprintf(stderr, "error opening file: %s\n", optarg);
-					exit(1);
-                }
-                opts->input = fd;
+                opts->file = optarg;
                 break;
             case '?':
 				if (optind <= argc &&
@@ -102,17 +97,24 @@ int main(int argc, char *argv[])
 {
     // Set defaults
     struct options opts = {0};
-    opts.input = stdin;
 
     // Parse options
     parse_options(argc, argv, &opts);
 
     // Read query from input
     char *query;
-    if (opts.query == NULL)
-        query = file_read_string(opts.input);
-    else
-        query = opts.query;
+    if (opts.command != NULL) {
+        query = opts.command;
+    } else if (opts.file != NULL) {
+        FILE *fd = fopen(opts.file, "r");
+        if (fd == NULL) {
+            perror("error opening file");
+            exit(1);
+        }
+        query = file_read_string(fd);
+    } else {
+        query = file_read_string(stdin);
+    }
 
     PgQueryParsetreeResult result = pg_query_parsetree(query);
     if (result.error) {

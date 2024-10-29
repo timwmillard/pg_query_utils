@@ -1,4 +1,8 @@
 
+.DS_Store
+
+*.dSYM
+
 /pg_query_json
 /pg_query_fingerprint
 /pg_query_prepare
