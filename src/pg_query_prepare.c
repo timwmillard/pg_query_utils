@@ -195,29 +195,29 @@ int main(int argc, char *argv[])
                         fingerprint_result.error->cursorpos);
                 return 1;
             }
-            printf("fingerprint=%s ", fingerprint_result.fingerprint_str);
+            printf("query=%s", fingerprint_result.fingerprint_str);
+
+            Node *node = raw->stmt;
+
+            NodeContext node_ctx = {0};
+            walk_node(node, &node_ctx);
+
+            if (list_length(node_ctx.params) > 0)
+                printf(" params=");
+
+            list_sort(node_ctx.params, list_PgQueryPrepareParam_cmp);
+
+            ListCell *param_cell;
+            int i = 0;
+            foreach(param_cell, node_ctx.params) {
+                i++;
+                PgQueryPrepareParam *param = lfirst(param_cell);
+                printf("%d", param->number);
+                if (i < list_length(node_ctx.params))
+                    printf(",");
+            }
+            printf("\n");
         }
-
-        Node *node = raw->stmt;
-
-        NodeContext node_ctx = {0};
-        walk_node(node, &node_ctx);
-
-        if (list_length(node_ctx.params) > 0)
-            printf("params=");
-
-        list_sort(node_ctx.params, list_PgQueryPrepareParam_cmp);
-
-        ListCell *param_cell;
-        int i = 0;
-        foreach(param_cell, node_ctx.params) {
-            i++;
-            PgQueryPrepareParam *param = lfirst(param_cell);
-            printf("%d", param->number);
-            if (i < list_length(node_ctx.params))
-                printf(",");
-        }
-        printf("\n");
     }
 
     return 0;
