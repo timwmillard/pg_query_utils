@@ -11,9 +11,6 @@
 
 #include "postgres.h"
 #include "nodes/nodeFuncs.h"
-#include "parser/parser.h"
-#include "utils/memutils.h"
-#include "mb/pg_wchar.h"
 #include "nodes/pg_list.h"
 
 
