@@ -43,7 +43,7 @@ char *file_read_string(FILE *fd) {
 
     size_t index = 0;
     char c;
-    while ((c = fgetc(stdin)) != EOF) {
+    while ((c = fgetc(fd)) != EOF) {
         if (index + 1 > buf_size) {
             buf_size *= 2;
             buf = realloc(buf, buf_size);
@@ -59,3 +59,4 @@ char *file_read_string(FILE *fd) {
 }
 
 #endif
+
