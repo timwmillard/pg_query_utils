@@ -1,7 +1,7 @@
 /*
  * pg_query_prepare.c
  *    Utility program to analyse a query and return number of params.
- * 
+ *
  */
 
 #include <stdio.h>
@@ -20,23 +20,23 @@
 
 static void version(void)
 {
-	printf("pg_query_prepare " VERSION "\n\n");
+    printf("pg_query_prepare " VERSION "\n\n");
 
-	printf("PostgreSQL " PG_VERSION "\n");
+    printf("PostgreSQL " PG_VERSION "\n");
 }
 
 void usage()
 {
-	printf("pg_query_prepard is a utility for anaylsing prepare statments.\n\n");
-	printf("Usage:\n");
-	printf("  pg_query_prepare [OPTION]...\n\n");
+    printf("pg_query_prepard is a utility for anaylsing prepare statments.\n\n");
+    printf("Usage:\n");
+    printf("  pg_query_prepare [OPTION]...\n\n");
 
-	printf("\nOptions:\n");
-	printf("  -?, --help               show this help, then exit\n");
-	printf("  -V, --version            output version information\n");
-	printf("  -c, --command=COMMAND    run only single command (SQL)\n");
-	printf("  -f, --file=FILENAME      read from file instead of stdin\n");
-	printf("  -d, --details            output query details\n");
+    printf("\nOptions:\n");
+    printf("  -?, --help               show this help, then exit\n");
+    printf("  -V, --version            output version information\n");
+    printf("  -c, --command=COMMAND    run only single command (SQL)\n");
+    printf("  -f, --file=FILENAME      read from file instead of stdin\n");
+    printf("  -d, --details            output query details\n");
 }
 
 struct options {
@@ -52,7 +52,7 @@ static void parse_options(int argc, char *argv[], struct options *opts)
 
     /* options descriptor */
     static struct option longopts[] = {
-		{ "help",        no_argument,       NULL, '?' },
+        { "help",        no_argument,       NULL, '?' },
         { "command",     required_argument, NULL, 'c' },
         { "file",        required_argument, NULL, 'f' },
         { "details",     no_argument,       NULL, 'd' },
@@ -75,12 +75,12 @@ static void parse_options(int argc, char *argv[], struct options *opts)
                 opts->file = optarg;
                 break;
             case '?':
-				if (optind <= argc &&
+                if (optind <= argc &&
                     (strcmp(argv[optind - 1], "-?") == 0 ||
                     strcmp(argv[optind - 1], "--help") == 0)) {
-					usage();
-					exit(0);
-				}
+                    usage();
+                    exit(0);
+                }
                 // no break, fallthrough to default
             default:
                 fprintf(stderr, "Try: pg_query_prepare --help\n");
@@ -108,14 +108,14 @@ typedef struct {
     List *params;
 } NodeContext;
 
-int	list_PgQueryPrepareParam_cmp(const ListCell *c1, const ListCell *c2)
+int list_PgQueryPrepareParam_cmp(const ListCell *c1, const ListCell *c2)
 {
     PgQueryPrepareParam *p1 = lfirst(c1);
     PgQueryPrepareParam *p2 = lfirst(c2);
     int a = p1->number;
     int b = p2->number;
 
-	return (a > b) - (a < b);
+    return (a > b) - (a < b);
 }
 
 bool walk_node(Node *node, NodeContext *ctx) 
@@ -182,7 +182,7 @@ int main(int argc, char *argv[])
     }
 
     List *tree = result.tree;
-	ListCell *cell;
+    ListCell *cell;
     foreach(cell, tree) {
         RawStmt *raw = lfirst(cell);
 
