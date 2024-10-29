@@ -1,0 +1,17 @@
+{
+    "configurations": [
+    {
+        "name": "Launch pg_query_prepare (lldb)",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/pg_query_prepare",
+        "args": ["-f", "${workspaceFolder}/demo.sql", "-d"],
+        "stopAtEntry": false,
+        "cwd": "${fileDirname}",
+        "environment": [],
+        "externalConsole": false,
+        "MIMode": "lldb"
+    }
+],
+"version": "2.0.0"
+}
