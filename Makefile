@@ -1,8 +1,11 @@
 
-CFLAGS += -Isrc/vendor/libpg_query/ -Isrc/vendor/libpg_query/vendor/
+CFLAGS += -Isrc/vendor/libpg_query/ \
+		  -Isrc/vendor/libpg_query/vendor/ \
+		  -Isrc/vendor/libpg_query/src/postgres/include/
+
 LDFLAGS += -Lsrc/vendor/libpg_query/ -lpg_query
 
-.PHONY: all
+.PHONY: all libpg_query
 
 all: pg_query_json pg_query_fingerprint pg_query_prepare pg_describe_query
 
@@ -20,6 +23,9 @@ pg_query_fingerprint: src/pg_query_fingerprint.c src/vendor/libpg_query/libpg_qu
 pg_query_prepare: src/pg_query_prepare.c src/vendor/libpg_query/libpg_query.a
 	clang $(CFLAGS) $(LDFLAGS) $< -o $@
 
+libpg_query:
+	cd src/vendor/libpg_query && \
+	make
 
 src/vendor/libpg_query/libpg_query.a:
 	cd src/vendor/libpg_query && \

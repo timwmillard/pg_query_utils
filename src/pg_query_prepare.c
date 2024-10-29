@@ -5,9 +5,19 @@
  *
  */
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 #include <getopt.h>
 
+#include "postgres.h"
+#include "nodes/nodeFuncs.h"
+#include "parser/parser.h"
+#include "utils/memutils.h"
+#include "mb/pg_wchar.h"
+#include "nodes/pg_list.h"
+
+
+#include "pg_query.h"
 #include "buf.h"
 
 #define VERSION "0.0.1"
@@ -93,7 +103,29 @@ int main(int argc, char *argv[])
     // Read query from input
     char *query = file_read_string(opts.input);
 
-    printf("query = %s\n", query);
+    PgQueryParsetreeResult result = pg_query_parsetree(query);
+    if (result.error) {
+        fprintf(stderr, "error: %s at pos:%d\n", 
+                result.error->message, 
+                result.error->cursorpos);
+        return 1;
+    }
+
+    List *tree = result.tree;
+	ListCell *cell;
+    foreach(cell, tree) {
+        RawStmt *raw = lfirst(cell);
+
+        PgQueryFingerprintResult fingerprint_result = pg_query_fingerprint_from_tree(raw);
+        if (fingerprint_result.error) {
+            fprintf(stderr, "error: %s at pos:%d\n", 
+                    fingerprint_result.error->message, 
+                    fingerprint_result.error->cursorpos);
+            return 1;
+        }
+        printf("fingerprint: %s\n", fingerprint_result.fingerprint_str);
+    }
+
     return 0;
 }
 

@@ -1,6 +1,7 @@
 
 -Isrc/vendor/libpg_query/
 -Isrc/vendor/libpg_query/vendor/
+-Isrc/vendor/libpg_query/src/
 -Isrc/vendor/libpg_query/src/postgres/include/
 
 -I/opt/homebrew/opt/libpq/include
