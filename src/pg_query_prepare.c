@@ -93,26 +93,36 @@ static void parse_options(int argc, char *argv[], struct options *opts)
 }
 
 typedef struct {
+    int number;
+    char *name;
+} PgQueryPrepareParam;
+
+typedef struct {
+    char *fingerprint;
+    PgQueryPrepareParam *params;
+} PgQueryPrepareStatement;
+
+typedef struct {
     int level;
     int node_count;
+
+    List *params;
 } NodeContext;
+
+int	list_PgQueryPrepareParam_cmp(const ListCell *c1, const ListCell *c2)
+{
+    PgQueryPrepareParam *p1 = lfirst(c1);
+    PgQueryPrepareParam *p2 = lfirst(c2);
+    int a = p1->number;
+    int b = p2->number;
+
+	return (a > b) - (a < b);
+}
 
 bool walk_node(Node *node, NodeContext *ctx) 
 {
     ctx->node_count++;
     if (node == NULL) return false;
-
-    // Print some space for each level
-    for (int i=0; i < ctx->level; i++) printf("   ");
-
-    // Process Node
-    printf("NODE(%d): %d ", node->type, ctx->level);
-    switch (node->type) {
-#include "nodetags.h"
-        default: break;
-    }
-    printf("\n");
-    // End Process Node
 
     if (IsA(node, List)) {
         ctx->level++;
@@ -125,6 +135,13 @@ bool walk_node(Node *node, NodeContext *ctx)
         }
         ctx->level--;
         return false;
+    }
+
+    if (IsA(node, ParamRef)) {
+        ParamRef *ref = (ParamRef*)node;
+        PgQueryPrepareParam *param = malloc(sizeof(PgQueryPrepareParam));
+        param->number = ref->number;
+        ctx->params = lappend(ctx->params, param);
     }
 
     bool result;
@@ -170,7 +187,6 @@ int main(int argc, char *argv[])
     foreach(cell, tree) {
         RawStmt *raw = lfirst(cell);
 
-        printf("--- Statement ---\n");
         if (opts.details) {
             PgQueryFingerprintResult fingerprint_result = pg_query_fingerprint_from_tree(raw);
             if (fingerprint_result.error) {
@@ -179,17 +195,29 @@ int main(int argc, char *argv[])
                         fingerprint_result.error->cursorpos);
                 return 1;
             }
-            printf("fingerprint=%s\n", fingerprint_result.fingerprint_str);
+            printf("fingerprint=%s ", fingerprint_result.fingerprint_str);
         }
 
         Node *node = raw->stmt;
 
         NodeContext node_ctx = {0};
-        bool result;
-        /*result = raw_expression_tree_walker(node, find_node, ctx);*/
-        result = walk_node(node, &node_ctx);
+        walk_node(node, &node_ctx);
 
-        printf("node_count=%d\n", node_ctx.node_count);
+        if (list_length(node_ctx.params) > 0)
+            printf("params=");
+
+        list_sort(node_ctx.params, list_PgQueryPrepareParam_cmp);
+
+        ListCell *param_cell;
+        int i = 0;
+        foreach(param_cell, node_ctx.params) {
+            i++;
+            PgQueryPrepareParam *param = lfirst(param_cell);
+            printf("%d", param->number);
+            if (i < list_length(node_ctx.params))
+                printf(",");
+        }
+        printf("\n");
     }
 
     return 0;
