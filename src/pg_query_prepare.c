@@ -92,6 +92,47 @@ static void parse_options(int argc, char *argv[], struct options *opts)
     argv += optind;
 }
 
+typedef struct {
+    int level;
+    int node_count;
+} NodeContext;
+
+bool walk_node(Node *node, NodeContext *ctx) 
+{
+    ctx->node_count++;
+    if (node == NULL) return false;
+
+    // Print some space for each level
+    for (int i=0; i < ctx->level; i++) printf("   ");
+
+    // Process Node
+    printf("NODE(%d): %d ", node->type, ctx->level);
+    switch (node->type) {
+#include "nodetags.h"
+        default: break;
+    }
+    printf("\n");
+    // End Process Node
+
+    if (IsA(node, List)) {
+        ctx->level++;
+        List *list = (List*) node;
+        ListCell *cell;
+        foreach(cell, list) {
+            Node *node = lfirst(cell);
+            walk_node(node, ctx);
+        }
+        ctx->level--;
+        return false;
+    }
+
+    bool result;
+    ctx->level++;
+    result = raw_expression_tree_walker(node, walk_node, ctx);
+    ctx->level--;
+    return result;
+}
+
 int main(int argc, char *argv[]) 
 {
     // Set defaults
@@ -128,6 +169,7 @@ int main(int argc, char *argv[])
     foreach(cell, tree) {
         RawStmt *raw = lfirst(cell);
 
+        printf("--- Statement ---\n");
         if (opts.details) {
             PgQueryFingerprintResult fingerprint_result = pg_query_fingerprint_from_tree(raw);
             if (fingerprint_result.error) {
@@ -138,6 +180,15 @@ int main(int argc, char *argv[])
             }
             printf("fingerprint=%s\n", fingerprint_result.fingerprint_str);
         }
+
+        Node *node = raw->stmt;
+
+        NodeContext node_ctx = {0};
+        bool result;
+        /*result = raw_expression_tree_walker(node, find_node, ctx);*/
+        result = walk_node(node, &node_ctx);
+
+        printf("node_count=%d\n", node_ctx.node_count);
     }
 
     return 0;
