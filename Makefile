@@ -3,6 +3,8 @@ CFLAGS += -Isrc/vendor/libpg_query/ \
 		  -Isrc/vendor/libpg_query/vendor/ \
 		  -Isrc/vendor/libpg_query/src/postgres/include/
 
+CFLAGS += -g
+
 LDFLAGS += -Lsrc/vendor/libpg_query/ -lpg_query
 
 .PHONY: all libpg_query
