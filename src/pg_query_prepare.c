@@ -120,7 +120,8 @@ bool walk_node(Node *node, NodeContext *ctx)
         ListCell *cell;
         foreach(cell, list) {
             Node *node = lfirst(cell);
-            walk_node(node, ctx);
+            if (walk_node(node, ctx))
+                return true;
         }
         ctx->level--;
         return false;
