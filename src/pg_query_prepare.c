@@ -30,17 +30,12 @@ void usage()
 	printf("  -?, --help               show this help, then exit\n");
 }
 
-struct opts 
+struct options 
 {
-	char	   *dbname;
-	char	   *host;
-	char	   *port;
-	char	   *username;
-
     FILE *input;
 };
 
-static void parse_options(int argc, char *argv[], struct opts *options) 
+static void parse_options(int argc, char *argv[], struct options *opts) 
 {
     int ch;
     FILE *fd;
@@ -66,7 +61,7 @@ static void parse_options(int argc, char *argv[], struct opts *options)
                     fprintf(stderr, "error opening file: %s\n", optarg);
 					exit(1);
                 }
-                options->input = fd;
+                opts->input = fd;
                 break;
             case '?':
 				if (optind <= argc &&
@@ -85,16 +80,18 @@ static void parse_options(int argc, char *argv[], struct opts *options)
     argv += optind;
 }
 
-static struct opts options;
-
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) 
+{
+    struct options opts;
 
     // Set defaults
-    options.input = stdin;
+    opts.input = stdin;
 
-    parse_options(argc, argv, &options);
+    // Parse options
+    parse_options(argc, argv, &opts);
 
-    char *query = file_read_string(options.input);
+    // Read query from input
+    char *query = file_read_string(opts.input);
 
     printf("query = %s\n", query);
     return 0;
