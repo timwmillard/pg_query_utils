@@ -146,11 +146,11 @@ bool walk_node(Node *node, NodeContext *ctx)
             return false;
         }
     }
+
     // found on UPDATE query
     if (IsA(node, ResTarget)) {
         ResTarget *res = (ResTarget*)node;
-        if (res->val == NULL) return false;
-        if (IsA(res->val, ParamRef)) {
+        if (res->val != NULL && IsA(res->val, ParamRef)) {
             ParamRef *ref = (ParamRef*)res->val;
             PgQueryPrepareParam *param = malloc(sizeof(PgQueryPrepareParam));
             param->number = ref->number;
@@ -159,7 +159,6 @@ bool walk_node(Node *node, NodeContext *ctx)
             return false;
         }
     }
-
 
     if (IsA(node, ParamRef)) {
         ParamRef *ref = (ParamRef*)node;
