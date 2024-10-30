@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <getopt.h>
+#include <ctype.h>
 
 #include "postgres.h"
 #include "nodes/nodeFuncs.h"
@@ -62,7 +63,7 @@ static void parse_options(int argc, char *argv[], struct options *opts)
 
     while ((ch = getopt_long(argc, argv, "c:f:dV?", longopts, NULL)) != -1) {
         switch (ch) {
-            case 'c': 
+            case 'c':
                 opts->command = optarg;
                 break;
             case 'd':
@@ -118,7 +119,7 @@ int list_PgQueryPrepareParam_cmp(const ListCell *c1, const ListCell *c2)
     return (a > b) - (a < b);
 }
 
-bool walk_node(Node *node, NodeContext *ctx) 
+bool walk_node(Node *node, NodeContext *ctx)
 {
     ctx->node_count++;
     if (node == NULL) return false;
@@ -150,7 +151,7 @@ bool walk_node(Node *node, NodeContext *ctx)
     return result;
 }
 
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
     // Set defaults
     struct options opts = {0};
@@ -175,8 +176,8 @@ int main(int argc, char *argv[])
 
     PgQueryParsetreeResult result = pg_query_parsetree(query);
     if (result.error) {
-        fprintf(stderr, "error: %s at pos:%d\n", 
-                result.error->message, 
+        fprintf(stderr, "error: %s at pos:%d\n",
+                result.error->message,
                 result.error->cursorpos);
         return 1;
     }
@@ -189,8 +190,8 @@ int main(int argc, char *argv[])
         if (opts.details) {
             PgQueryFingerprintResult fingerprint_result = pg_query_fingerprint_from_tree(raw);
             if (fingerprint_result.error) {
-                fprintf(stderr, "error: %s at pos:%d\n", 
-                        fingerprint_result.error->message, 
+                fprintf(stderr, "error: %s at pos:%d\n",
+                        fingerprint_result.error->message,
                         fingerprint_result.error->cursorpos);
                 return 1;
             }
@@ -217,6 +218,26 @@ int main(int argc, char *argv[])
             }
             printf("\n");
         }
+    }
+    if (opts.details) return 0;
+
+    PgQuerySplitResult split_result = pg_query_split_with_parser(query);
+    if (split_result.error) {
+        fprintf(stderr, "error: %s at pos:%d\n",
+                split_result.error->message,
+                split_result.error->cursorpos);
+        return 1;
+    }
+
+    for (int i=0; i < split_result.n_stmts; i++) {
+        PgQuerySplitStmt *stmt = split_result.stmts[i];
+        char *start = &query[stmt->stmt_location];
+        int len = stmt->stmt_len;
+        while (isspace(*start)) {
+            start++;
+            len--;
+        }
+        printf("-- statement %d\nPREPARE pg_query_prepare_%d AS %.*s;\n", i, i, len, start);
     }
 
     return 0;
