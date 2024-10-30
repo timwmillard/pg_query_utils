@@ -28,7 +28,7 @@ sudo cp pg_query_prepare /usr/local/bin/
 See the help menu for usaage options.
 
 ```
-pg_query_utils --help
+pg_query_prepare --help
 
 ```
 
