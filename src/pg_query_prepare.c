@@ -237,6 +237,11 @@ int main(int argc, char *argv[])
             start++;
             len--;
         }
+        char *end = start + len - 1;
+        while (isspace(*end)) {
+            end--;
+            len--;
+        }
         printf("-- statement %d\nPREPARE pg_query_prepare_%d AS %.*s;\n", i, i, len, start);
     }
 
