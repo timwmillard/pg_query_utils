@@ -31,7 +31,7 @@ void usage()
 {
     printf("pg_query_prepard is a utility for anaylsing prepare statments.\n\n");
     printf("Usage:\n");
-    printf("  pg_query_prepare [OPTION]...\n\n");
+    printf("  pg_query_prepare [OPTION]...\n");
 
     printf("\nOptions:\n");
     printf("  -?, --help               show this help, then exit\n");
