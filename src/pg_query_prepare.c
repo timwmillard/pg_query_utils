@@ -138,6 +138,7 @@ bool walk_node(Node *node, NodeContext *ctx)
         return false;
     }
 
+    // found on WHERE clause
     if (IsA(node, A_Expr)) {
         A_Expr *expr = (A_Expr*)node;
         if (IsA(expr->lexpr, ColumnRef) && IsA(expr->rexpr, ParamRef)) {
@@ -155,9 +156,23 @@ bool walk_node(Node *node, NodeContext *ctx)
             }
             param->number = ref->number;
             ctx->params = lappend(ctx->params, param);
+            return false;
         }
-        return false;
     }
+    // found on UPDATE query
+    if (IsA(node, ResTarget)) {
+        ResTarget *res = (ResTarget*)node;
+        if (res->val == NULL) return false;
+        if (IsA(res->val, ParamRef)) {
+            ParamRef *ref = (ParamRef*)res->val;
+            PgQueryPrepareParam *param = malloc(sizeof(PgQueryPrepareParam));
+            param->number = ref->number;
+            param->name = res->name;
+            ctx->params = lappend(ctx->params, param);
+            return false;
+        }
+    }
+
 
     if (IsA(node, ParamRef)) {
         ParamRef *ref = (ParamRef*)node;
