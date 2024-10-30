@@ -11,6 +11,7 @@
 #include <ctype.h>
 
 #include "postgres.h"
+#include "nodes/parsenodes.h"
 #include "nodes/nodeFuncs.h"
 #include "nodes/pg_list.h"
 
@@ -137,6 +138,27 @@ bool walk_node(Node *node, NodeContext *ctx)
         return false;
     }
 
+    if (IsA(node, A_Expr)) {
+        A_Expr *expr = (A_Expr*)node;
+        if (IsA(expr->lexpr, ColumnRef) && IsA(expr->rexpr, ParamRef)) {
+            ColumnRef *col = (ColumnRef*)expr->lexpr;
+            ParamRef *ref = (ParamRef*)expr->rexpr;
+            PgQueryPrepareParam *param = malloc(sizeof(PgQueryPrepareParam));
+
+            ListCell *cell;
+            foreach(cell, col->fields) {
+                Node *node = lfirst(cell);
+                if (IsA(node, String)) {
+                    String *name = (String*)node;
+                    param->name = name->sval;
+                }
+            }
+            param->number = ref->number;
+            ctx->params = lappend(ctx->params, param);
+        }
+        return false;
+    }
+
     if (IsA(node, ParamRef)) {
         ParamRef *ref = (ParamRef*)node;
         PgQueryPrepareParam *param = malloc(sizeof(PgQueryPrepareParam));
@@ -213,6 +235,9 @@ int main(int argc, char *argv[])
                 i++;
                 PgQueryPrepareParam *param = lfirst(param_cell);
                 printf("%d", param->number);
+                if (param->name != NULL) {
+                    printf(":%s", param->name);
+                }
                 if (i < list_length(node_ctx.params))
                     printf(",");
             }
