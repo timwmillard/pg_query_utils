@@ -125,19 +125,6 @@ bool walk_node(Node *node, NodeContext *ctx)
     ctx->node_count++;
     if (node == NULL) return false;
 
-    if (IsA(node, List)) {
-        ctx->level++;
-        List *list = (List*) node;
-        ListCell *cell;
-        foreach(cell, list) {
-            Node *node = lfirst(cell);
-            if (walk_node(node, ctx))
-                return true;
-        }
-        ctx->level--;
-        return false;
-    }
-
     // found on WHERE clause
     if (IsA(node, A_Expr)) {
         A_Expr *expr = (A_Expr*)node;
@@ -182,9 +169,7 @@ bool walk_node(Node *node, NodeContext *ctx)
     }
 
     bool result;
-    ctx->level++;
     result = raw_expression_tree_walker(node, walk_node, ctx);
-    ctx->level--;
     return result;
 }
 
