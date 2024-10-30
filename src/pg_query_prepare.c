@@ -159,6 +159,50 @@ bool walk_node(Node *node, NodeContext *ctx)
             return false;
         }
     }
+    // found on INSERT query
+    if (IsA(node, InsertStmt)) {
+        InsertStmt *insert = (InsertStmt*)node;
+        if (insert->selectStmt == NULL) goto next_node;
+        SelectStmt *select = (SelectStmt*)insert->selectStmt;
+        if (select->valuesLists == NULL) goto next_node;
+        int insert_params_len = list_length(select->valuesLists);
+        PgQueryPrepareParam **insert_params = malloc(sizeof(PgQueryPrepareParam*) * insert_params_len);
+        ListCell *cell;
+        int i = 0;
+        foreach(cell, select->valuesLists) {
+            Node *node = lfirst(cell);
+            PgQueryPrepareParam *param = NULL;
+            if (IsA(node, ParamRef)) {
+                ParamRef *ref = (ParamRef*)node;
+                param = malloc(sizeof(PgQueryPrepareParam));
+                param->number = ref->number;
+            } else if (walk_node(node, ctx))
+                return true;
+
+            insert_params[i] = param;
+            i++;
+        }
+
+        if (insert->cols != NULL) {
+            int i = 0;
+            foreach(cell, insert->cols) {
+                if (i >= insert_params_len) break;
+                Node *node = lfirst(cell);
+                if (IsA(node, ResTarget) && insert_params[i] != NULL) {
+                    ResTarget *res = (ResTarget*)node;
+                    insert_params[i]->name = res->name;
+                }
+                i++;
+            }
+        }
+        for (int i=0; i < insert_params_len; i++) {
+            if (insert_params[i] != NULL)
+                ctx->params = lappend(ctx->params, insert_params[i]);
+        }
+        free(insert_params);
+        return false;
+    }
+next_node:
 
     if (IsA(node, ParamRef)) {
         ParamRef *ref = (ParamRef*)node;
