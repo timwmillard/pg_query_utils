@@ -168,29 +168,30 @@ bool walk_node(Node *node, NodeContext *ctx)
         int col_names_len = 0;
         char **col_names;
         // Columns
-        if (insert->cols != NULL) {
-            col_names_len = list_length(insert->cols);
-            col_names = malloc(sizeof(PgQueryPrepareParam*) * col_names_len);
-            int i = 0;
-            foreach(cell, insert->cols) {
-                Node *node = lfirst(cell);
-                if (IsA(node, ResTarget)) {
-                    ResTarget *res = (ResTarget*)node;
-                    col_names[i] = res->name;
-                } else if (walk_node(node, ctx)) {
-                    free(col_names);
-                    return true;
-                }
-                i++;
+        col_names_len = list_length(insert->cols);
+        col_names = malloc(sizeof(PgQueryPrepareParam*) * col_names_len);
+        int i = 0;
+        foreach(cell, insert->cols) {
+            Node *node = lfirst(cell);
+            if (IsA(node, ResTarget)) {
+                ResTarget *res = (ResTarget*)node;
+                col_names[i] = res->name;
+            } else if (walk_node(node, ctx)) {
+                free(col_names);
+                return true;
             }
+            i++;
         }
 
         if (insert->selectStmt == NULL) goto insert_cleanup;
         SelectStmt *select = (SelectStmt*)insert->selectStmt;
-        if (select->valuesLists == NULL) goto insert_cleanup;
         foreach(cell, select->valuesLists) {
             Node *node = lfirst(cell);
-            if (!IsA(node, List)) continue;
+            if (!IsA(node, List)) {
+                if (walk_node(node, ctx))
+                        return true;
+                continue;
+            }
             List *values = (List*)node;
             int i = 0;
             foreach(cell, values) {
@@ -208,7 +209,8 @@ bool walk_node(Node *node, NodeContext *ctx)
         }
 
     insert_cleanup:
-        if (insert->cols != NULL) free(col_names);
+        free(col_names);
+
         return false;
     }
 
