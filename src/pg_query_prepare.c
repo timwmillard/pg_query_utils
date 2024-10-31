@@ -159,50 +159,58 @@ bool walk_node(Node *node, NodeContext *ctx)
             return false;
         }
     }
+
     // found on INSERT query
     if (IsA(node, InsertStmt)) {
-        InsertStmt *insert = (InsertStmt*)node;
-        if (insert->selectStmt == NULL) goto next_node;
-        SelectStmt *select = (SelectStmt*)insert->selectStmt;
-        if (select->valuesLists == NULL) goto next_node;
-        int insert_params_len = list_length(select->valuesLists);
-        PgQueryPrepareParam **insert_params = malloc(sizeof(PgQueryPrepareParam*) * insert_params_len);
         ListCell *cell;
-        int i = 0;
-        foreach(cell, select->valuesLists) {
-            Node *node = lfirst(cell);
-            PgQueryPrepareParam *param = NULL;
-            if (IsA(node, ParamRef)) {
-                ParamRef *ref = (ParamRef*)node;
-                param = malloc(sizeof(PgQueryPrepareParam));
-                param->number = ref->number;
-            } else if (walk_node(node, ctx))
-                return true;
+        InsertStmt *insert = (InsertStmt*)node;
 
-            insert_params[i] = param;
-            i++;
-        }
-
+        int col_names_len = 0;
+        char **col_names;
+        // Columns
         if (insert->cols != NULL) {
+            col_names_len = list_length(insert->cols);
+            col_names = malloc(sizeof(PgQueryPrepareParam*) * col_names_len);
             int i = 0;
             foreach(cell, insert->cols) {
-                if (i >= insert_params_len) break;
                 Node *node = lfirst(cell);
-                if (IsA(node, ResTarget) && insert_params[i] != NULL) {
+                if (IsA(node, ResTarget)) {
                     ResTarget *res = (ResTarget*)node;
-                    insert_params[i]->name = res->name;
+                    col_names[i] = res->name;
+                } else if (walk_node(node, ctx)) {
+                    free(col_names);
+                    return true;
                 }
                 i++;
             }
         }
-        for (int i=0; i < insert_params_len; i++) {
-            if (insert_params[i] != NULL)
-                ctx->params = lappend(ctx->params, insert_params[i]);
+
+        if (insert->selectStmt == NULL) goto insert_cleanup;
+        SelectStmt *select = (SelectStmt*)insert->selectStmt;
+        if (select->valuesLists == NULL) goto insert_cleanup;
+        foreach(cell, select->valuesLists) {
+            Node *node = lfirst(cell);
+            if (!IsA(node, List)) continue;
+            List *values = (List*)node;
+            int i = 0;
+            foreach(cell, values) {
+                Node *node = lfirst(cell);
+                if (IsA(node, ParamRef)) {
+                    ParamRef *ref = (ParamRef*)node;
+                    PgQueryPrepareParam *param = malloc(sizeof(PgQueryPrepareParam));
+                    param->number = ref->number;
+                    param->name = col_names[i];
+                    ctx->params = lappend(ctx->params, param);
+                } else if (walk_node(node, ctx))
+                    return true;
+                i++;
+            }
         }
-        free(insert_params);
+
+    insert_cleanup:
+        if (insert->cols != NULL) free(col_names);
         return false;
     }
-next_node:
 
     if (IsA(node, ParamRef)) {
         ParamRef *ref = (ParamRef*)node;
