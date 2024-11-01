@@ -99,11 +99,6 @@ typedef struct {
 } PgQueryPrepareParam;
 
 typedef struct {
-    char *fingerprint;
-    PgQueryPrepareParam *params;
-} PgQueryPrepareStatement;
-
-typedef struct {
     int level;
     int node_count;
 
