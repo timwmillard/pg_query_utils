@@ -170,27 +170,53 @@ bool walk_node(Node *node, NodeContext *ctx)
     if (node == NULL) return false;
 
     /********************/
-    // Print some space for each level
-    for (int i=0; i < ctx->level; i++) printf(" ");
-
-    // Process Node
-    switch (node->type) {
-#include "nodetags.h"
-        default: break;
-    }
-    printf("(%d)", node->type);
-    /*printf(" level=%d", ctx->level);*/
-    if (ctx->parent != NULL) {
-        printf(" parent=%d", ctx->parent->type);
-    }
-    printf("\n");
-    // End Process Node
+/*    // Print some space for each level*/
+/*    for (int i=0; i < ctx->level; i++) printf(" ");*/
+/**/
+/*    // Process Node*/
+/*    switch (node->type) {*/
+/*#include "nodetags.h"*/
+/*        default: break;*/
+/*    }*/
+/*    printf("(%d)", node->type);*/
+/*    // printf(" level=%d", ctx->level);*/
+/*    if (ctx->parent != NULL) {*/
+/*        printf(" parent=%d", ctx->parent->type);*/
+/*    }*/
+/*    printf("\n");*/
+/*    // End Process Node*/
     /********************/
 
     if (IsA(node, ParamRef)) {
         ParamRef *ref = (ParamRef*)node;
+        char *param_name = NULL;
 
-        ctx->params = add_pg_query_prepare_params(ctx->params, ref->number, NULL);
+        // found on WHERE clause
+        if (IsA(ctx->parent, A_Expr)) {
+            A_Expr *expr = (A_Expr*)ctx->parent;
+            if (IsA(expr->lexpr, ColumnRef) && IsA(expr->rexpr, ParamRef)) {
+                ColumnRef *col = (ColumnRef*)expr->lexpr;
+                ParamRef *ref = (ParamRef*)expr->rexpr;
+
+                ListCell *cell;
+                foreach(cell, col->fields) {
+                    Node *node = lfirst(cell);
+                    if (IsA(node, String)) {
+                        String *name = (String*)node;
+                        param_name = name->sval;
+                    }
+                }
+            }
+        }
+            // found on UPDATE query
+        if (IsA(ctx->parent, ResTarget)) {
+            ResTarget *res = (ResTarget*)ctx->parent;
+            if (res->val != NULL && IsA(res->val, ParamRef)) {
+                param_name = res->name;
+            }
+        }
+
+        ctx->params = add_pg_query_prepare_params(ctx->params, ref->number, param_name);
         return false;
     }
     
@@ -271,7 +297,7 @@ int main(int argc, char *argv[])
             Node *node = raw->stmt;
 
             NodeContext node_ctx = {0};
-            printf("------------\n");
+            /*printf("------------\n");*/
             walk_node(node, &node_ctx);
 
             if (LEN(node_ctx.params) > 0)
