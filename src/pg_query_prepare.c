@@ -98,11 +98,60 @@ typedef struct {
     char *name;
 } PgQueryPrepareParam;
 
+#define LEN(l) ((l) ? (l)->len : 0)
+
+typedef struct {
+    int cap;
+    int len;
+    PgQueryPrepareParam items[];
+} PgQueryPrepareParamList;
+
+PgQueryPrepareParamList *add_pg_query_prepare_params(PgQueryPrepareParamList *list, int number, char *name)
+{
+    if (number <= 0) return NULL;
+    int index = number - 1;
+
+    // Allocate list
+    if (list == NULL) {
+        const int cap = 20;
+        size_t size = sizeof(PgQueryPrepareParamList) + sizeof(PgQueryPrepareParam) * cap;
+        list = malloc(size);
+        if (!list) {
+            perror("PgQueryPrepareParamList list out of memory");
+            return list;
+        }
+        memset(list, 0, size);
+        list->cap = cap;
+    }
+
+    // Set list len
+    if (index + 1 > list->len)
+        list->len = index + 1;
+
+    // Grow list
+    if (list->len >= list->cap) {
+        list->cap = list->cap * 2; 
+        list = realloc(list, sizeof(PgQueryPrepareParamList) + list->cap  * sizeof(PgQueryPrepareParam));
+        if (!list) {
+            perror("PgQueryPrepareParamList list out of memory");
+            return list;
+        }
+    }
+    
+    // Set data
+    list->items[index].number = number;
+    list->items[index].name = name;
+    return list;
+}
+
 typedef struct {
     int level;
     int node_count;
 
-    List *params;
+    Node *parent;
+
+    PgQueryPrepareParamList *params;
+    char *last_name;
 } NodeContext;
 
 int list_PgQueryPrepareParam_cmp(const ListCell *c1, const ListCell *c2)
@@ -120,100 +169,11 @@ bool walk_node(Node *node, NodeContext *ctx)
     ctx->node_count++;
     if (node == NULL) return false;
 
-    // found on WHERE clause
-    if (IsA(node, A_Expr)) {
-        A_Expr *expr = (A_Expr*)node;
-        if (IsA(expr->lexpr, ColumnRef) && IsA(expr->rexpr, ParamRef)) {
-            ColumnRef *col = (ColumnRef*)expr->lexpr;
-            ParamRef *ref = (ParamRef*)expr->rexpr;
-            PgQueryPrepareParam *param = malloc(sizeof(PgQueryPrepareParam));
-
-            ListCell *cell;
-            foreach(cell, col->fields) {
-                Node *node = lfirst(cell);
-                if (IsA(node, String)) {
-                    String *name = (String*)node;
-                    param->name = name->sval;
-                }
-            }
-            param->number = ref->number;
-            ctx->params = lappend(ctx->params, param);
-            return false;
-        }
-    }
-
-    // found on UPDATE query
-    if (IsA(node, ResTarget)) {
-        ResTarget *res = (ResTarget*)node;
-        if (res->val != NULL && IsA(res->val, ParamRef)) {
-            ParamRef *ref = (ParamRef*)res->val;
-            PgQueryPrepareParam *param = malloc(sizeof(PgQueryPrepareParam));
-            param->number = ref->number;
-            param->name = res->name;
-            ctx->params = lappend(ctx->params, param);
-            return false;
-        }
-    }
-
-    // found on INSERT query
-    if (IsA(node, InsertStmt)) {
-        ListCell *cell;
-        InsertStmt *insert = (InsertStmt*)node;
-
-        int col_names_len = 0;
-        char **col_names;
-        // Columns
-        col_names_len = list_length(insert->cols);
-        col_names = malloc(sizeof(PgQueryPrepareParam*) * col_names_len);
-        int i = 0;
-        foreach(cell, insert->cols) {
-            Node *node = lfirst(cell);
-            if (IsA(node, ResTarget)) {
-                ResTarget *res = (ResTarget*)node;
-                col_names[i] = res->name;
-            } else if (walk_node(node, ctx)) {
-                free(col_names);
-                return true;
-            }
-            i++;
-        }
-
-        if (insert->selectStmt == NULL) goto insert_cleanup;
-        SelectStmt *select = (SelectStmt*)insert->selectStmt;
-        foreach(cell, select->valuesLists) {
-            Node *node = lfirst(cell);
-            if (!IsA(node, List)) {
-                if (walk_node(node, ctx))
-                        return true;
-                continue;
-            }
-            List *values = (List*)node;
-            int i = 0;
-            foreach(cell, values) {
-                Node *node = lfirst(cell);
-                if (IsA(node, ParamRef)) {
-                    ParamRef *ref = (ParamRef*)node;
-                    PgQueryPrepareParam *param = malloc(sizeof(PgQueryPrepareParam));
-                    param->number = ref->number;
-                    param->name = col_names[i];
-                    ctx->params = lappend(ctx->params, param);
-                } else if (walk_node(node, ctx))
-                    return true;
-                i++;
-            }
-        }
-
-    insert_cleanup:
-        free(col_names);
-
-        return false;
-    }
-
     if (IsA(node, ParamRef)) {
         ParamRef *ref = (ParamRef*)node;
-        PgQueryPrepareParam *param = malloc(sizeof(PgQueryPrepareParam));
-        param->number = ref->number;
-        ctx->params = lappend(ctx->params, param);
+
+        ctx->params = add_pg_query_prepare_params(ctx->params, ref->number, NULL);
+        return false;
     }
 
     bool result;
@@ -272,21 +232,17 @@ int main(int argc, char *argv[])
             NodeContext node_ctx = {0};
             walk_node(node, &node_ctx);
 
-            if (list_length(node_ctx.params) > 0)
+            if (LEN(node_ctx.params) > 0)
                 printf(" params=");
 
-            list_sort(node_ctx.params, list_PgQueryPrepareParam_cmp);
-
-            ListCell *param_cell;
-            int i = 0;
-            foreach(param_cell, node_ctx.params) {
-                i++;
-                PgQueryPrepareParam *param = lfirst(param_cell);
-                printf("%d", param->number);
-                if (param->name != NULL) {
-                    printf(":%s", param->name);
+            for (int i = 0; i < LEN(node_ctx.params); i++) {
+                PgQueryPrepareParam param = node_ctx.params->items[i];
+                if (param.number == 0) continue;
+                printf("%d", param.number);
+                if (param.name != NULL) {
+                    printf(":%s", param.name);
                 }
-                if (i < list_length(node_ctx.params))
+                if (i + 1 < LEN(node_ctx.params))
                     printf(",");
             }
             printf("\n");
