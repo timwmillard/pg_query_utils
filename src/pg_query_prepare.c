@@ -169,15 +169,55 @@ bool walk_node(Node *node, NodeContext *ctx)
     ctx->node_count++;
     if (node == NULL) return false;
 
+    /********************/
+    // Print some space for each level
+    for (int i=0; i < ctx->level; i++) printf(" ");
+
+    // Process Node
+    switch (node->type) {
+#include "nodetags.h"
+        default: break;
+    }
+    printf("(%d)", node->type);
+    /*printf(" level=%d", ctx->level);*/
+    if (ctx->parent != NULL) {
+        printf(" parent=%d", ctx->parent->type);
+    }
+    printf("\n");
+    // End Process Node
+    /********************/
+
     if (IsA(node, ParamRef)) {
         ParamRef *ref = (ParamRef*)node;
 
         ctx->params = add_pg_query_prepare_params(ctx->params, ref->number, NULL);
         return false;
     }
+    
+    if (IsA(node, List)) {
+        ctx->level++;
+        List *list = (List*) node;
+        ListCell *cell;
+        foreach(cell, list) {
+            Node *item = lfirst(cell);
+            Node *parent = ctx->parent;
+            ctx->parent = node;
+            if (walk_node(item, ctx))
+                return true;
+            ctx->parent = parent;
+        }
+        ctx->level--;
+        return false;
+    }
+
 
     bool result;
+    ctx->level++;
+    Node *parent = ctx->parent;
+    ctx->parent = node;
     result = raw_expression_tree_walker(node, walk_node, ctx);
+    ctx->parent = parent;
+    ctx->level--;
     return result;
 }
 
@@ -196,6 +236,7 @@ int main(int argc, char *argv[])
     } else if (opts.file != NULL) {
         FILE *fd = fopen(opts.file, "r");
         if (fd == NULL) {
+            printf("error opening file %s\n", opts.file);
             perror("error opening file");
             exit(1);
         }
@@ -230,6 +271,7 @@ int main(int argc, char *argv[])
             Node *node = raw->stmt;
 
             NodeContext node_ctx = {0};
+            printf("------------\n");
             walk_node(node, &node_ctx);
 
             if (LEN(node_ctx.params) > 0)
