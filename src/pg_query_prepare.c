@@ -113,11 +113,11 @@ PgQueryPrepareParamList *add_pg_query_prepare_params(PgQueryPrepareParamList *li
 
     // Allocate list
     if (list == NULL) {
-        const int cap = 20;
-        size_t size = sizeof(PgQueryPrepareParamList) + sizeof(PgQueryPrepareParam) * cap;
+        const int cap = 32;
+        size_t size = sizeof(*list->items) + sizeof(*list->items) * cap;
         list = malloc(size);
         if (!list) {
-            perror("PgQueryPrepareParamList list out of memory");
+            perror("list out of memory");
             return list;
         }
         memset(list, 0, size);
@@ -131,9 +131,9 @@ PgQueryPrepareParamList *add_pg_query_prepare_params(PgQueryPrepareParamList *li
     // Grow list
     if (list->len >= list->cap) {
         list->cap = list->cap * 2; 
-        list = realloc(list, sizeof(PgQueryPrepareParamList) + list->cap  * sizeof(PgQueryPrepareParam));
+        list = realloc(list, sizeof(*list->items) + list->cap  * sizeof(*list->items));
         if (!list) {
-            perror("PgQueryPrepareParamList list out of memory");
+            perror("list out of memory");
             return list;
         }
     }
