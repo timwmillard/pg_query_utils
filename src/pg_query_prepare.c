@@ -17,6 +17,7 @@
 
 #include "pg_query.h"
 #include "buf.h"
+#include "ds.h"
 
 #define VERSION "0.0.1"
 
@@ -98,50 +99,10 @@ typedef struct {
     char *name;
 } PgQueryPrepareParam;
 
-#define LEN(l) ((l) ? (l)->len : 0)
+ARRAY(PgQueryPrepareParamList, PgQueryPrepareParam);
 
-typedef struct {
-    int cap;
-    int len;
-    PgQueryPrepareParam items[];
-} PgQueryPrepareParamList;
-
-PgQueryPrepareParamList *add_pg_query_prepare_params(PgQueryPrepareParamList *list, int number, char *name)
-{
-    if (number <= 0) return NULL;
-    int index = number - 1;
-
-    // Allocate list
-    if (list == NULL) {
-        const int cap = 32;
-        size_t size = sizeof(*list->items) + sizeof(*list->items) * cap;
-        list = malloc(size);
-        if (!list) {
-            perror("list out of memory");
-            return list;
-        }
-        memset(list, 0, size);
-        list->cap = cap;
-    }
-
-    // Set list len
-    if (index + 1 > list->len)
-        list->len = index + 1;
-
-    // Grow list
-    if (list->len >= list->cap) {
-        list->cap = list->cap * 2; 
-        list = realloc(list, sizeof(*list->items) + list->cap  * sizeof(*list->items));
-        if (!list) {
-            perror("list out of memory");
-            return list;
-        }
-    }
-    
-    // Set data
-    list->items[index].number = number;
-    list->items[index].name = name;
-    return list;
+void *add_pg_query_prepare_params(void *list, int number, char *name) {
+    return PgQueryPrepareParamList_insert(list, number + 1, (PgQueryPrepareParam){number, name});
 }
 
 typedef struct {
@@ -300,17 +261,17 @@ int main(int argc, char *argv[])
             /*printf("------------\n");*/
             walk_node(node, &node_ctx);
 
-            if (LEN(node_ctx.params) > 0)
+            if (ARRAY_LEN(node_ctx.params) > 0)
                 printf(" params=");
 
-            for (int i = 0; i < LEN(node_ctx.params); i++) {
+            for (int i = 0; i < ARRAY_LEN(node_ctx.params); i++) {
                 PgQueryPrepareParam param = node_ctx.params->items[i];
                 if (param.number == 0) continue;
                 printf("%d", param.number);
                 if (param.name != NULL) {
                     printf(":%s", param.name);
                 }
-                if (i + 1 < LEN(node_ctx.params))
+                if (i + 1 < ARRAY_LEN(node_ctx.params))
                     printf(",");
             }
             printf("\n");
