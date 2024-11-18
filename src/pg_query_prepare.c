@@ -97,12 +97,16 @@ static void parse_options(int argc, char *argv[], struct options *opts)
 typedef struct {
     int number;
     char *name;
-} PgQueryPrepareParam;
+} QueryParam;
 
-ARRAY(PgQueryPrepareParamList, PgQueryPrepareParam);
+ARRAY(QueryParamList, QueryParam);
 
-void *add_pg_query_prepare_params(void *list, int number, char *name) {
-    return PgQueryPrepareParamList_insert(list, number + 1, (PgQueryPrepareParam){number, name});
+QueryParamList *add_query_param(QueryParamList *list, int number, char *name) {
+    return QueryParamList_insert(list, number + 1, (QueryParam){number, name});
+}
+
+StringList *add_pg_query_prepare_col(StringList *list, int number, char *name) {
+    return StringList_insert(list, number + 1,  name);
 }
 
 typedef struct {
@@ -111,19 +115,10 @@ typedef struct {
 
     Node *parent;
 
-    PgQueryPrepareParamList *params;
+    QueryParamList *params;
     char *last_name;
 } NodeContext;
 
-int list_PgQueryPrepareParam_cmp(const ListCell *c1, const ListCell *c2)
-{
-    PgQueryPrepareParam *p1 = lfirst(c1);
-    PgQueryPrepareParam *p2 = lfirst(c2);
-    int a = p1->number;
-    int b = p2->number;
-
-    return (a > b) - (a < b);
-}
 
 bool walk_node(Node *node, NodeContext *ctx)
 {
@@ -147,6 +142,58 @@ bool walk_node(Node *node, NodeContext *ctx)
 /*    printf("\n");*/
 /*    // End Process Node*/
     /********************/
+
+    // found on INSERT query
+    if (IsA(node, InsertStmt)) {
+        ListCell *cell;
+        InsertStmt *insert = (InsertStmt*)node;
+
+        int col_names_len = 0;
+        char **col_names;
+        // Columns
+        col_names_len = list_length(insert->cols);
+        col_names = malloc(sizeof(char*) * col_names_len);
+        int i = 0;
+        foreach(cell, insert->cols) {
+            Node *node = lfirst(cell);
+            if (IsA(node, ResTarget)) {
+                ResTarget *res = (ResTarget*)node;
+                col_names[i] = res->name;
+            } else if (walk_node(node, ctx)) {
+                free(col_names);
+                return true;
+            }
+            i++;
+        }
+
+        if (insert->selectStmt == NULL) goto insert_cleanup;
+        SelectStmt *select = (SelectStmt*)insert->selectStmt;
+        foreach(cell, select->valuesLists) {
+            Node *node = lfirst(cell);
+            /*if (!IsA(node, List)) {*/
+            /*    if (walk_node(node, ctx))*/
+            /*            return true;*/
+            /*    continue;*/
+            /*}*/
+            List *values = (List*)node;
+            int i = 0;
+            foreach(cell, values) {
+                Node *node = lfirst(cell);
+                if (IsA(node, ParamRef)) {
+                    ParamRef *ref = (ParamRef*)node;
+                    ctx->params = add_query_param(ctx->params, ref->number, col_names[i]);
+                } 
+                /*else if (walk_node(node, ctx))*/
+                /*    return true;*/
+                i++;
+            }
+        }
+
+    insert_cleanup:
+        free(col_names);
+
+        return false;
+    }
 
     if (IsA(node, ParamRef)) {
         ParamRef *ref = (ParamRef*)node;
@@ -177,7 +224,7 @@ bool walk_node(Node *node, NodeContext *ctx)
             }
         }
 
-        ctx->params = add_pg_query_prepare_params(ctx->params, ref->number, param_name);
+        ctx->params = add_query_param(ctx->params, ref->number, param_name);
         return false;
     }
     
@@ -265,7 +312,7 @@ int main(int argc, char *argv[])
                 printf(" params=");
 
             for (int i = 0; i < ARRAY_LEN(node_ctx.params); i++) {
-                PgQueryPrepareParam param = node_ctx.params->items[i];
+                QueryParam param = node_ctx.params->items[i];
                 if (param.number == 0) continue;
                 printf("%d", param.number);
                 if (param.name != NULL) {

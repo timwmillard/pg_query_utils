@@ -6,8 +6,8 @@
 #include <string.h>
 
 typedef struct {
-    int cap;
-    int len;
+    size_t cap;
+    size_t len;
 } arrayHeader;
 
 
@@ -46,8 +46,8 @@ static inline arrayHeader *array_grow(arrayHeader *list, size_t index, size_t it
 #define ARRAY_CAP(l) ((l) ? (l)->cap : 0)
 
 #define ARRAY(name, T) typedef struct { \
-    int cap; \
-    int len; \
+    size_t cap; \
+    size_t len; \
     T items[]; \
 } name; \
 name *name##_insert(name *list, size_t index, T data) { \
