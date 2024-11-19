@@ -102,11 +102,22 @@ typedef struct {
 ARRAY(QueryParamList, QueryParam);
 
 QueryParamList *add_query_param(QueryParamList *list, int number, char *name) {
-    return QueryParamList_insert(list, number + 1, (QueryParam){number, name});
+    if (ARRAY_LEN(list) > number) {
+        QueryParam param = list->items[number - 1];
+        if (param.name != NULL && name != NULL) {
+            size_t len = strlen(param.name) + strlen(name) + 2; // '&' and '\0'
+            char *new_name = malloc(len);
+            strcpy(new_name, param.name);
+            strcat(new_name, "&");
+            strcat(new_name, name);
+            name = new_name;
+        }
+    }
+    return QueryParamList_insert(list, number - 1, (QueryParam){number, name});
 }
 
 StringList *add_pg_query_prepare_col(StringList *list, int number, char *name) {
-    return StringList_insert(list, number + 1,  name);
+    return StringList_insert(list, number - 1,  name);
 }
 
 typedef struct {
